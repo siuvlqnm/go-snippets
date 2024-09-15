@@ -13,7 +13,7 @@ import (
 
 func main() {
 	var version float32
-	version = 0.4
+	version = 0.5
 	fmt.Printf("版本：%0.2f\n", version)
 	fmt.Println("感谢黄总选择并使用我们的软件，我们期待与您一起见证软件的成长与进步。如果您在使用过程中有任何建议或反馈，欢迎随时与我们联系。")
 	fmt.Print("请输入文件名（包含文件后缀，如：data.xlsx）: ")
@@ -81,7 +81,7 @@ func main() {
 		}
 
 		// 删除不必要的列
-		removeColumns(f, sheetName, []string{"P", "T", "T"})
+		removeColumns(f, sheetName, []string{"Q", "U", "U"})
 
 		// 保存修改后的文件
 		if err := f.SaveAs("output.xlsx"); err != nil {
@@ -103,7 +103,7 @@ func insertColumns(f *excelize.File, sheetName string) error {
 	if err := f.InsertCols(sheetName, "E", 4); err != nil {
 		return err
 	}
-	if err := f.InsertCols(sheetName, "L", 4); err != nil {
+	if err := f.InsertCols(sheetName, "L", 5); err != nil {
 		return err
 	}
 	return nil
@@ -120,7 +120,8 @@ func setHeader(f *excelize.File, sheetName string) {
 		{"L1", "合计"},
 		{"M1", "美团券"},
 		{"N1", "好评"},
-		{"O1", "线下交提成"},
+		{"O1", "是否贴画"},
+		{"P1", "线下交提成"},
 	}
 
 	for _, header := range headers {
@@ -140,12 +141,12 @@ func processRow(f *excelize.File, sheetName string, rowIndex int, row []string, 
 
 	// 处理预约时间
 	if len(row) > 14 {
-		f.SetCellValue(sheetName, fmt.Sprintf("W%d", rowIndex), extractDate(row[14]))
+		f.SetCellValue(sheetName, fmt.Sprintf("X%d", rowIndex), extractDate(row[14]))
 	}
 
 	// 处理跟单备注
 	if len(row) > 15 {
-		f.SetCellValue(sheetName, fmt.Sprintf("X%d", rowIndex), strings.TrimSpace(strings.Replace(row[15], "后台导入", "", -1)))
+		f.SetCellValue(sheetName, fmt.Sprintf("Y%d", rowIndex), strings.TrimSpace(strings.Replace(row[15], "后台导入", "", -1)))
 	}
 
 	// 处理回访内容
@@ -175,29 +176,34 @@ func processFeedback(f *excelize.File, sheetName string, rowIndex int, feedback 
 	// 处理线下交提成
 	offlineCommission := extractOfflineCommission(feedback, offlineCommissionRe)
 	if offlineCommission > 0 {
-		f.SetCellValue(sheetName, fmt.Sprintf("O%d", rowIndex), offlineCommission)
+		f.SetCellValue(sheetName, fmt.Sprintf("P%d", rowIndex), offlineCommission)
 	}
 
 	// 处理好评
 	if strings.Contains(feedback, "好评") {
 		f.SetCellValue(sheetName, fmt.Sprintf("N%d", rowIndex), 1)
 	}
+
+	// 是否贴画
+	if strings.Contains(feedback, "好评") {
+		f.SetCellValue(sheetName, fmt.Sprintf("O%d", rowIndex), 1)
+	}
 }
 
 func processPaymentStatus(f *excelize.File, sheetName string, rowIndex int, paymentStatus string) {
 	if paymentStatus == "无需支付" {
-		clearCells(f, sheetName, rowIndex, []string{"Q", "R", "S"})
+		clearCells(f, sheetName, rowIndex, []string{"R", "S", "T"})
 	} else if paymentStatus == "未支付" {
 		style, _ := f.NewStyle(&excelize.Style{
 			Font: &excelize.Font{Color: "FF0000"},
 		})
-		f.SetCellStyle(sheetName, fmt.Sprintf("Q%d", rowIndex), fmt.Sprintf("S%d", rowIndex), style)
+		f.SetCellStyle(sheetName, fmt.Sprintf("R%d", rowIndex), fmt.Sprintf("T%d", rowIndex), style)
 	}
 }
 
 func calculateTotal(f *excelize.File, sheetName string, rowIndex int) {
-	repairFee, _ := f.GetCellValue(sheetName, fmt.Sprintf("Q%d", rowIndex))
-	materialFee, _ := f.GetCellValue(sheetName, fmt.Sprintf("R%d", rowIndex))
+	repairFee, _ := f.GetCellValue(sheetName, fmt.Sprintf("R%d", rowIndex))
+	materialFee, _ := f.GetCellValue(sheetName, fmt.Sprintf("S%d", rowIndex))
 	meituanCoupon, _ := f.GetCellValue(sheetName, fmt.Sprintf("M%d", rowIndex))
 
 	total := sumFees(repairFee, materialFee, meituanCoupon)
@@ -216,9 +222,9 @@ func calculateTotal(f *excelize.File, sheetName string, rowIndex int) {
 func processOrderStatus(f *excelize.File, sheetName string, rowIndex int, masterDispatcher, city string) {
 	switch masterDispatcher {
 	case "测试1":
-		f.SetCellValue(sheetName, fmt.Sprintf("T%d", rowIndex), city+"-未派出")
+		f.SetCellValue(sheetName, fmt.Sprintf("U%d", rowIndex), city+"-未派出")
 	case "邓姐":
-		f.SetCellValue(sheetName, fmt.Sprintf("T%d", rowIndex), city+"-邓姐外派")
+		f.SetCellValue(sheetName, fmt.Sprintf("U%d", rowIndex), city+"-邓姐外派")
 	}
 }
 

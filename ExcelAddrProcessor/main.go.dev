@@ -1,0 +1,175 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/xuri/excelize/v2"
+)
+
+func main() {
+	fmt.Print("请输入文件名（包含文件后缀，如：data.xlsx）: ")
+	var response string
+	fmt.Scanln(&response)
+
+	// 打开 Excel 文件
+	f, err := excelize.OpenFile(response)
+	if err != nil {
+		log.Fatalf("无法打开文件: %v", err)
+	}
+	defer f.Close()
+
+	// 获取所有工作表名
+	sheetList := f.GetSheetList()
+	if len(sheetList) == 0 {
+		log.Fatalf("文件中没有工作表")
+	}
+	sheetName := sheetList[0] // 使用第一个工作表
+
+	// 获取所有行
+	rows, err := f.GetRows(sheetName)
+	if err != nil {
+		log.Fatalf("无法获取行: %v", err)
+	}
+
+	// 在原有列后添加新列
+	if err := f.InsertCols(sheetName, "E", 4); err != nil {
+		log.Fatalf("无法插入新列: %v", err)
+	}
+
+	// if err := f.InsertCols(sheetName, "M", 3); err != nil {
+	// 	log.Fatalf("无法插入新列: %v", err)
+	// }
+
+	for i, row := range rows {
+		if i == 0 {
+			// 设置新列的标题
+			f.SetCellValue(sheetName, "E1", "省")
+			f.SetCellValue(sheetName, "F1", "市")
+			f.SetCellValue(sheetName, "G1", "县/区")
+			f.SetCellValue(sheetName, "H1", "详细地址")
+			// f.SetCellValue(sheetName, "M1", "合计")
+			// f.SetCellValue(sheetName, "N1", "美团劵")
+			// f.SetCellValue(sheetName, "O1", "线下提成")
+			continue
+		}
+
+		if len(row) > 3 { // 确保D列存在
+			address := row[3]
+			province, city, district, detail := parseAddress(address)
+
+			// 将解析后的地址写入新列
+			f.SetCellValue(sheetName, fmt.Sprintf("E%d", i+1), province)
+			f.SetCellValue(sheetName, fmt.Sprintf("F%d", i+1), city)
+			f.SetCellValue(sheetName, fmt.Sprintf("G%d", i+1), district)
+			f.SetCellValue(sheetName, fmt.Sprintf("H%d", i+1), detail)
+		}
+
+		// 检查P列和Q列
+		// if len(row) > 15 { // 确保P列存在
+		// 	pValue := row[15]
+		// 	var qValue string
+		// 	if len(row) > 16 { // 确保Q列存在
+		// 		qValue = row[16]
+		// 	}
+
+		// 	if containsKeywords(pValue) || containsKeywords(qValue) {
+		// 		fmt.Printf("第 %d 行可能需要标记。P列值: %s, Q列值: %s\n", i+1, pValue, qValue)
+		// 		f.SetCellValue(sheetName, fmt.Sprintf("N%d", i+1), 50)
+		// 	}
+		// }
+
+		// 检查P列和Q列
+		// if len(row) > 15 { // 确保P列存在
+		// 	pValue := row[15]
+		// 	var qValue string
+		// 	if len(row) > 16 { // 确保Q列存在
+		// 		qValue = row[16]
+		// 	}
+
+		// 	if containsKeywords(pValue) || containsKeywords(qValue) {
+		// 		fmt.Printf("第 %d 行可能需要标记。P列值: %s, Q列值: %s\n", i+1, pValue, qValue)
+		// 		fmt.Print("是否标记此行? (y/n): ")
+		// 		var response string
+		// 		fmt.Scanln(&response)
+		// 		if strings.ToLower(response) == "y" {
+		// 			// 在新列I中标记
+		// 			f.SetCellValue(sheetName, fmt.Sprintf("I%d", i+1), "已标记")
+		// 		}
+		// 	}
+		// }
+	}
+
+	// 保存修改后的文件
+	if err := f.SaveAs("output.xlsx"); err != nil {
+		log.Fatalf("无法保存文件: %v", err)
+	}
+
+	fmt.Println("处理完成，结果已保存到 output.xlsx")
+}
+
+func parseAddress(address string) (province, city, district, detail string) {
+	parts := strings.SplitN(address, "市", 2)
+	if len(parts) == 2 {
+		// 处理 "省" 或 "自治区"
+		cityParts := strings.SplitN(parts[0], "省", 2)
+		if len(cityParts) != 2 {
+			cityParts = strings.SplitN(parts[0], "自治区", 2)
+			if len(cityParts) == 2 {
+				province = cityParts[0] + "自治区"
+				city = cityParts[1] + "市"
+			} else {
+				city = parts[0] + "市"
+			}
+		} else {
+			province = cityParts[0] + "省"
+			city = cityParts[1] + "市"
+		}
+
+		// 处理 "区" 或 "县"
+		districtParts := strings.SplitN(parts[1], "区", 2)
+		if len(districtParts) == 2 {
+			district = districtParts[0] + "区"
+			detail = districtParts[1]
+		} else {
+			districtParts = strings.SplitN(parts[1], "县", 2)
+			if len(districtParts) == 2 {
+				district = districtParts[0] + "县"
+				detail = districtParts[1]
+			} else {
+				detail = parts[1]
+			}
+		}
+	} else {
+		detail = address
+	}
+	return
+}
+
+func containsKeywords(s string) bool {
+	keywords := []string{"券", "美团", "美团券"}
+	for _, keyword := range keywords {
+		if strings.Contains(s, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+func extractNumbers(text string) []int {
+	var numbers []int
+	re := regexp.MustCompile(`\d+`)
+	matches := re.FindAllString(text, -1)
+
+	for _, match := range matches {
+		num, err := strconv.Atoi(match)
+		if err == nil {
+			numbers = append(numbers, num)
+		}
+	}
+
+	return numbers
+}

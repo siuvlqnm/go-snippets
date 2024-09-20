@@ -46,6 +46,16 @@ func init() {
 }
 
 func main() {
+	// 让用户输入会话Cookie
+	// var sessionCookie string
+	// var start, end uint16
+	// fmt.Print("请输入会话Cookie: ")
+	// fmt.Scan(&sessionCookie)
+	// fmt.Print("开始: ")
+	// fmt.Scan(&start)
+	// fmt.Print("结束: ")
+	// fmt.Scan(&end)
+
 	sessionCookie := "PHPSESSID=njnd8l8rv4gif9864p9k65fh8l;"
 
 	// 打开CSV文件
@@ -101,6 +111,7 @@ func processBatch(records [][]string, sessionCookie string) error {
 			"row[gender]":              {gender},
 			"row[card_number]":         {generateOrderNumber()},
 			"row[card_id2]":            {cardID},
+			"row[contract_no]":         {generateOrderNumber()},
 			"row[person_id]":           {personID},
 			"row[is_follow_person_id]": {followPerson},
 			"row[business_allot]":      {money},

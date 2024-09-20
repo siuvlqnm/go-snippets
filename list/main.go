@@ -5,7 +5,8 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -21,17 +22,30 @@ type Response struct {
 	Msg  string `json:"msg"`
 }
 
-func main() {
-	// 让用户输入会话Cookie
-	// var sessionCookie string
-	// var start, end uint16
-	// fmt.Print("请输入会话Cookie: ")
-	// fmt.Scan(&sessionCookie)
-	// fmt.Print("开始: ")
-	// fmt.Scan(&start)
-	// fmt.Print("结束: ")
-	// fmt.Scan(&end)
+// 常量定义
+const (
+	gender       = "2"
+	personID     = "121"
+	followPerson = "1"
+	formURL      = "https://huayu.qitawangluo.cn/manage.php/sign/bill/add"
+)
 
+// multiWriter 用于将日志输出到多个地方
+func multiWriter(logFile *os.File) io.Writer {
+	return io.MultiWriter(logFile, os.Stdout)
+}
+
+// init 函数用于初始化日志和随机数种子
+func init() {
+	// 将日志输出到文件并在控制台打印
+	f, err := os.OpenFile("errors.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.SetOutput(multiWriter(f))
+}
+
+func main() {
 	sessionCookie := "PHPSESSID=njnd8l8rv4gif9864p9k65fh8l;"
 
 	// 打开CSV文件
@@ -50,32 +64,33 @@ func main() {
 		return
 	}
 
+	// 处理批量记录
 	err = processBatch(records[1:], sessionCookie)
-
 	if err != nil {
 		fmt.Println("Error processing batch:", err)
 		return
 	}
 }
 
+// processBatch 处理CSV中的每条记录
 func processBatch(records [][]string, sessionCookie string) error {
-	formURL := "https://huayu.qitawangluo.cn/manage.php/sign/bill/add"
 	var cardID string
-
 	for _, record := range records {
 		name := record[0]
 		mobile := record[1]
 		money := record[2]
 
-		// 其他参数可根据需要添加
-		if money == "100" {
+		// 判断金额并选择相应的卡ID
+		switch money {
+		case "100":
 			cardID = "27"
-		} else if money == "198" {
+		case "198":
 			cardID = "28"
-		} else if money == "298" {
+		case "298":
 			cardID = "24"
-		} else {
-			return fmt.Errorf("卡项识别错误，会员名: %s，手机号: %s，错误信息: %v", name, mobile, "表格内金额为: "+money)
+		default:
+			log.Printf("卡项识别错误，会员名: %s，手机号: %s，金额为: %s\n", name, mobile, money)
+			continue
 		}
 
 		// 创建表单数据
@@ -83,31 +98,22 @@ func processBatch(records [][]string, sessionCookie string) error {
 			"row[user_id]":             {"0"},
 			"row[name]":                {name},
 			"row[mobile]":              {mobile},
-			"row[gender]":              {"2"},
+			"row[gender]":              {gender},
 			"row[card_number]":         {generateOrderNumber()},
 			"row[card_id2]":            {cardID},
-			"row[eid]":                 {""},
-			"row[credit_amount]":       {""},
-			"row[give_day]":            {""},
-			"row[give_number]":         {""},
-			"row[give_remark]":         {""},
-			"row[contract_no]":         {generateOrderNumber()},
-			"row[person_id]":           {"121"},
-			"row[is_follow_person_id]": {"1"},
-			"row[help_person_id]":      {""},
+			"row[person_id]":           {personID},
+			"row[is_follow_person_id]": {followPerson},
 			"row[business_allot]":      {money},
-			"row[remark]":              {""},
 		}
 
-		// 提交表单并检查结果
-		err := submitForm(formURL, formData, sessionCookie)
-		if err != nil {
-			return fmt.Errorf("信息录入失败，失败信息: %v，会员名: %s，手机号: %s", err, name, mobile)
+		// 提交表单
+		if err := submitForm(formURL, formData, sessionCookie); err != nil {
+			log.Printf("信息录入失败，会员名: %s，手机号: %s, 错误: %v\n", name, mobile, err)
 		} else {
 			fmt.Printf("信息录入成功，会员名: %s，手机号: %s\n", name, mobile)
 		}
 
-		// 等待一秒钟
+		// 避免频繁请求，等待一秒
 		time.Sleep(1 * time.Second)
 	}
 	return nil
@@ -120,10 +126,10 @@ func submitForm(submitURL string, formData url.Values, sessionCookie string) err
 	if err != nil {
 		return err
 	}
+
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Cookie", sessionCookie)
 
-	// 执行请求
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -132,46 +138,32 @@ func submitForm(submitURL string, formData url.Values, sessionCookie string) err
 	defer resp.Body.Close()
 
 	// 读取响应体
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
 
 	// 检查响应状态码
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("form submission failed with status code: %d, body: %s", resp.StatusCode, body)
+		return fmt.Errorf("提交失败，状态码: %d, 响应: %s", resp.StatusCode, string(body))
 	}
 
-	// 调试输出响应体
-	// fmt.Printf("Response Status: %s\n", resp.Status)
-	// fmt.Println("Response Headers:")
-	// for key, values := range resp.Header {
-	// 	for _, value := range values {
-	// 		fmt.Printf("%s: %s\n", key, value)
-	// 	}
-	// }
-	// fmt.Printf("Response Body: %s\n", body)
-
+	// 判断返回的响应是否为JSON格式
 	if isJSON(body) {
-		// 解析JSON响应体
 		var response Response
-		err = json.Unmarshal(body, &response)
-		if err != nil {
-			return fmt.Errorf("failed to parse response JSON: %s", err)
+		if err := json.Unmarshal(body, &response); err != nil {
+			return fmt.Errorf("解析JSON失败: %v", err)
 		}
-		if response.Code == 0 {
-			return fmt.Errorf("send card failed: %s", response.Msg)
+		if response.Code != 1 {
+			return fmt.Errorf("提交卡失败: %s", response.Msg)
 		}
 	} else {
 		if strings.Contains(string(body), "system-message success") {
-
+			return nil // 提交成功
 		} else if strings.Contains(string(body), "system-message error") {
-			// 提取错误信息
-			errorMessage := extractErrorMessage(string(body))
-			return fmt.Errorf("%s", errorMessage)
+			return fmt.Errorf("错误信息: %s", extractErrorMessage(string(body)))
 		} else {
-			return fmt.Errorf("unexpected response: %s", body)
+			return fmt.Errorf("未知的响应: %s", string(body))
 		}
 	}
 
@@ -180,7 +172,6 @@ func submitForm(submitURL string, formData url.Values, sessionCookie string) err
 
 // extractErrorMessage 提取错误信息
 func extractErrorMessage(html string) string {
-	// errorPattern := regexp.MustCompile(`<div class="system-message error">.*?<h1>(.*?)</h1>.*?`)
 	errorPattern := regexp.MustCompile(`(?s)<div class="system-message error">.*?<h1>(.*?)</h1>.*?</div>`)
 	matches := errorPattern.FindStringSubmatch(html)
 	if len(matches) < 2 {
@@ -197,5 +188,6 @@ func isJSON(data []byte) bool {
 
 // generateOrderNumber 生成订单号
 func generateOrderNumber() string {
-	return time.Now().Format("20060102150405") + fmt.Sprintf("%04d", rand.Intn(10000))
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return time.Now().Format("20060102150405") + fmt.Sprintf("%04d", rng.Intn(10000))
 }

@@ -25,7 +25,7 @@ type Response struct {
 // 常量定义
 const (
 	gender       = "2"
-	personID     = "121"
+	personID     = "12"
 	followPerson = "1"
 	formURL      = "https://huayu.qitawangluo.cn/manage.php/sign/bill/add"
 )
@@ -56,7 +56,7 @@ func main() {
 	// fmt.Print("结束: ")
 	// fmt.Scan(&end)
 
-	sessionCookie := "PHPSESSID=njnd8l8rv4gif9864p9k65fh8l;"
+	sessionCookie := "PHPSESSID=li3biuee4akfmjl2epoicktf5q;"
 
 	// 打开CSV文件
 	file, err := os.Open("members.csv")
@@ -96,8 +96,6 @@ func processBatch(records [][]string, sessionCookie string) error {
 			cardID = "27"
 		case "198":
 			cardID = "28"
-		case "298":
-			cardID = "24"
 		default:
 			log.Printf("卡项识别错误，会员名: %s，手机号: %s，金额为: %s\n", name, mobile, money)
 			continue
@@ -115,6 +113,12 @@ func processBatch(records [][]string, sessionCookie string) error {
 			"row[person_id]":           {personID},
 			"row[is_follow_person_id]": {followPerson},
 			"row[business_allot]":      {money},
+			"row[eid]":                 {""},
+			"row[credit_amount]":       {""},
+			"row[give_day]":            {""},
+			"row[give_number]":         {""},
+			"row[give_remark]":         {""},
+			"row[remark]":              {""},
 		}
 
 		// 提交表单

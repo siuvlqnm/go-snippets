@@ -15,7 +15,6 @@ func main() {
 	var version float32
 	version = 0.5
 	fmt.Printf("版本：%0.2f\n", version)
-	fmt.Println("感谢黄总选择并使用我们的软件，我们期待与您一起见证软件的成长与进步。如果您在使用过程中有任何建议或反馈，欢迎随时与我们联系。")
 	fmt.Print("请输入文件名（包含文件后缀，如：data.xlsx）: ")
 	var response string
 	fmt.Scanln(&response)
@@ -185,7 +184,7 @@ func processFeedback(f *excelize.File, sheetName string, rowIndex int, feedback 
 	}
 
 	// 是否贴画
-	if strings.Contains(feedback, "好评") {
+	if strings.Contains(feedback, "贴画") {
 		f.SetCellValue(sheetName, fmt.Sprintf("O%d", rowIndex), 1)
 	}
 }

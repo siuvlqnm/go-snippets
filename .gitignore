@@ -2,3 +2,4 @@
 !.gitattributes
 *.DS_Store
 /list/members.csv
+/ExcelAddrProcessor/output.xlsx

@@ -3,3 +3,4 @@
 *.DS_Store
 /list/members.csv
 /ExcelAddrProcessor/output.xlsx
+/ExcelAddrProcessor/error.log

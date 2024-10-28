@@ -13,7 +13,7 @@ import (
 
 func main() {
 	var version float32
-	version = 0.5
+	version = 0.51
 	fmt.Printf("版本：%0.2f\n", version)
 	fmt.Print("请输入文件名（包含文件后缀，如：data.xlsx）: ")
 	var response string
@@ -224,6 +224,8 @@ func processOrderStatus(f *excelize.File, sheetName string, rowIndex int, master
 		f.SetCellValue(sheetName, fmt.Sprintf("U%d", rowIndex), city+"-未派出")
 	case "邓姐":
 		f.SetCellValue(sheetName, fmt.Sprintf("U%d", rowIndex), city+"-邓姐外派")
+	case "":
+		f.SetCellValue(sheetName, fmt.Sprintf("U%d", rowIndex), city+"-未派出")
 	}
 }
 

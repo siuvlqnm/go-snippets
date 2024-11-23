@@ -4,3 +4,4 @@
 /list/members.csv
 /ExcelAddrProcessor/output.xlsx
 /ExcelAddrProcessor/error.log
+/generate-sql/output.sql
